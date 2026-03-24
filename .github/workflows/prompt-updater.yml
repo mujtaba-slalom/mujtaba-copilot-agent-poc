@@ -2,12 +2,15 @@ name: Prompt Updater
 
 on:
   issues:
-    types: [opened, labeled]
+    types: [labeled]
 
-# Only run when the 'prompt-update' label is present
+# Runs when the 'prompt-update' label is added to an issue.
+# Using only the 'labeled' event + checking github.event.label.name is the
+# most reliable trigger — avoids the race condition where 'opened' fires
+# before the label is attached server-side.
 jobs:
   update-prompt:
-    if: contains(github.event.issue.labels.*.name, 'prompt-update')
+    if: github.event.label.name == 'prompt-update'
     runs-on: ubuntu-latest
     permissions:
       contents: write        # push branch
