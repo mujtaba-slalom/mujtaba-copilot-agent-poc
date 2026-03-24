@@ -36,15 +36,11 @@ jobs:
 
       # -----------------------------------------------------------------------
       # 3. Parse the issue body
-      #    Expected issue body format (see ISSUE_TEMPLATE):
       #
-      #    ### Update Instruction
-      #    <free text describing the update>
-      #
-      #    ### Evaluation Config (JSON)
-      #    ```json
-      #    { ... }
-      #    ```
+      #    Resolution order for eval file (first match wins):
+      #      a) ### Eval File URL  — a GitHub attachment URL pasted into the issue
+      #      b) ### Evaluation Config (JSON)  — inline JSON code block
+      #      c) evaluation/sample_eval.json  — repo default
       # -----------------------------------------------------------------------
       - name: Parse issue body
         id: parse
@@ -52,7 +48,7 @@ jobs:
           ISSUE_BODY: ${{ github.event.issue.body }}
         run: |
           python - <<'PYEOF'
-          import os, re, json, sys
+          import os, re, json, sys, urllib.request
 
           body = os.environ["ISSUE_BODY"]
 
@@ -66,27 +62,55 @@ jobs:
               sys.exit(1)
           instruction = instr_match.group(1).strip()
 
-          # --- Extract JSON eval config ---
-          json_match = re.search(
-              r"###\s*Evaluation Config.*?\n```(?:json)?\s*\n(.*?)```",
-              body, re.DOTALL | re.IGNORECASE
-          )
-          eval_json_str = json_match.group(1).strip() if json_match else None
+          eval_file = None
 
-          if eval_json_str:
-              try:
-                  json.loads(eval_json_str)   # validate
-              except json.JSONDecodeError as e:
-                  print(f"ERROR: Invalid JSON in Evaluation Config: {e}", file=sys.stderr)
+          # --- (a) Eval file URL ---
+          url_match = re.search(
+              r"###\s*Eval File URL\s*\n\s*(https?://\S+)",
+              body, re.IGNORECASE
+          )
+          if url_match:
+              url = url_match.group(1).strip()
+              # Only allow github.com URLs to prevent SSRF
+              if not re.match(r"https://.*\.github\.com/", url) and "githubusercontent.com" not in url and "github.com" not in url:
+                  print(f"ERROR: Eval file URL must be a github.com URL, got: {url}", file=sys.stderr)
                   sys.exit(1)
-              with open("evaluation/issue_eval.json", "w") as f:
-                  f.write(eval_json_str)
-              eval_file = "evaluation/issue_eval.json"
-          else:
+              print(f"Fetching eval file from URL: {url}")
+              try:
+                  with urllib.request.urlopen(url, timeout=15) as resp:  # nosec — URL validated above
+                      raw = resp.read().decode("utf-8")
+                  json.loads(raw)  # validate
+                  with open("evaluation/issue_eval.json", "w") as f:
+                      f.write(raw)
+                  eval_file = "evaluation/issue_eval.json"
+                  print("Eval file fetched successfully from URL.")
+              except Exception as e:
+                  print(f"ERROR: Failed to fetch eval file from URL: {e}", file=sys.stderr)
+                  sys.exit(1)
+
+          # --- (b) Inline JSON code block ---
+          if not eval_file:
+              json_match = re.search(
+                  r"###\s*Evaluation Config.*?\n```(?:json)?\s*\n(.*?)```",
+                  body, re.DOTALL | re.IGNORECASE
+              )
+              eval_json_str = json_match.group(1).strip() if json_match else None
+              if eval_json_str:
+                  try:
+                      json.loads(eval_json_str)  # validate
+                  except json.JSONDecodeError as e:
+                      print(f"ERROR: Invalid JSON in Evaluation Config: {e}", file=sys.stderr)
+                      sys.exit(1)
+                  with open("evaluation/issue_eval.json", "w") as f:
+                      f.write(eval_json_str)
+                  eval_file = "evaluation/issue_eval.json"
+
+          # --- (c) Repo default ---
+          if not eval_file:
               eval_file = "evaluation/sample_eval.json"
+              print("No eval file provided — using repo default: evaluation/sample_eval.json")
 
           with open(os.environ["GITHUB_OUTPUT"], "a") as fh:
-              # Escape newlines for GitHub Actions output
               safe_instruction = instruction.replace("\n", "%0A").replace("\r", "")
               fh.write(f"instruction={safe_instruction}\n")
               fh.write(f"eval_file={eval_file}\n")

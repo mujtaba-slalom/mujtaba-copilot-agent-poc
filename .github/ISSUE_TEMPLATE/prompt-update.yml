@@ -43,19 +43,31 @@ body:
     validations:
       required: true
 
+  - type: input
+    id: eval_file_url
+    attributes:
+      label: Eval File URL (optional)
+      description: |
+        Upload your eval JSON file by dragging it onto this issue (or any comment) and paste the
+        resulting URL here. Must be a github.com / githubusercontent.com link.
+        Takes priority over the inline JSON field below.
+      placeholder: "https://github.com/user/repo/files/123456/my_eval.json"
+    validations:
+      required: false
+
   - type: textarea
     id: eval_config
     attributes:
-      label: Evaluation Config (JSON)
+      label: Evaluation Config (JSON) — alternative to URL above
       description: |
-        Paste your evaluation configuration as JSON inside a code block.
-        If left empty, the default `evaluation/sample_eval.json` will be used.
+        Paste your evaluation JSON directly here as an alternative to uploading a file.
+        If both this field and the URL above are empty, the default `evaluation/sample_eval.json` is used.
 
-        The JSON should follow this schema:
+        Schema:
         ```json
         {
-          "target_prompt": "<stem of the prompt file>",
-          "update_instruction": "<same as above or more detailed>",
+          "target_prompt": "<prompt stem>",
+          "update_instruction": "<one-line summary>",
           "test_cases": [
             {
               "id": "test_something",
@@ -80,12 +92,6 @@ body:
               "id": "test_escalation",
               "description": "Prompt includes escalation path",
               "required_keywords": ["escalat", "supervisor"],
-              "score_weight": 0.5
-            },
-            {
-              "id": "test_callback",
-              "description": "Prompt includes callback option",
-              "required_keywords": ["callback", "schedule"],
               "score_weight": 0.5
             }
           ],
