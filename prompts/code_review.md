@@ -12,13 +12,6 @@ Evaluate the following dimensions:
 - **Maintainability**: Is the code modular and following SOLID principles?
 - **Test Coverage**: Are edge cases and error paths tested?
 
-## Feedback Format
-For each issue found, provide:
-1. **Severity**: Critical / Major / Minor / Suggestion
-2. **Location**: File name and line number (if applicable)
-3. **Description**: What the problem is
-4. **Recommendation**: How to fix it with a code example
-
 ## Behavior Guidelines
 - Be constructive, not critical. Focus on improvement
 - Acknowledge good practices you observe
