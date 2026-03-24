@@ -1,0 +1,49 @@
+{
+  "prompt_file": "/home/runner/work/mujtaba-copilot-agent-poc/mujtaba-copilot-agent-poc/prompts/code_review.md",
+  "eval_file": "/home/runner/work/mujtaba-copilot-agent-poc/mujtaba-copilot-agent-poc/evaluation/temp_eval.json",
+  "target_prompt": "code_review",
+  "score": 0.6,
+  "threshold": 1.0,
+  "passed": false,
+  "test_results": [
+    {
+      "id": "test_feedback_format",
+      "description": "Prompt must still contain a Feedback Format section",
+      "passed": false,
+      "matched_keywords": [],
+      "missing_keywords": [
+        "feedback format",
+        "## feedback"
+      ],
+      "score_weight": 0.4,
+      "contribution": 0.0
+    },
+    {
+      "id": "test_severity",
+      "description": "Prompt must still list severity levels",
+      "passed": true,
+      "matched_keywords": [
+        "critical"
+      ],
+      "missing_keywords": [
+        "severity"
+      ],
+      "score_weight": 0.35,
+      "contribution": 0.35
+    },
+    {
+      "id": "test_recommendation",
+      "description": "Prompt must still require recommendations with code examples",
+      "passed": true,
+      "matched_keywords": [
+        "recommendation"
+      ],
+      "missing_keywords": [
+        "code example"
+      ],
+      "score_weight": 0.25,
+      "contribution": 0.25
+    }
+  ],
+  "length_check": null
+}

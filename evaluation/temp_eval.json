@@ -1,0 +1,27 @@
+{
+  "target_prompt": "code_review",
+  "update_instruction": "Remove feedback format section",
+  "test_cases": [
+    {
+      "id": "test_feedback_format",
+      "description": "Prompt must still contain a Feedback Format section",
+      "required_keywords": ["feedback format", "## feedback"],
+      "score_weight": 0.40
+    },
+    {
+      "id": "test_severity",
+      "description": "Prompt must still list severity levels",
+      "required_keywords": ["critical", "severity"],
+      "score_weight": 0.35
+    },
+    {
+      "id": "test_recommendation",
+      "description": "Prompt must still require recommendations with code examples",
+      "required_keywords": ["recommendation", "code example"],
+      "score_weight": 0.25
+    }
+  ],
+  "evaluation_criteria": {
+    "threshold": 1.0
+  }
+}
