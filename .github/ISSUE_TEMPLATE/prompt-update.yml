@@ -1,0 +1,108 @@
+name: Prompt Update Request
+description: Request an update to one of the LLM prompts in the prompts/ directory. The Prompt Updater agent will automatically identify the correct prompt, apply changes, evaluate, and open a pull request.
+title: "[PROMPT UPDATE] "
+labels:
+  - prompt-update
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## How this works
+        1. Fill in the form below and submit the issue.
+        2. The **Prompt Updater** GitHub Actions workflow will automatically trigger.
+        3. It will identify the matching prompt, apply your changes, run evaluation, and open a pull request.
+        4. Results are posted as a comment on this issue.
+
+        > **Tip**: For the agent to use LLM-powered rewriting, ensure `OPENAI_API_KEY` is set in your repository secrets.
+
+  - type: dropdown
+    id: target_prompt
+    attributes:
+      label: Target Prompt
+      description: Which prompt do you want to update?
+      options:
+        - customer_support
+        - code_review
+        - summarization
+        - translation
+        - sentiment_analysis
+        - Other (describe in Update Instruction)
+    validations:
+      required: true
+
+  - type: textarea
+    id: update_instruction
+    attributes:
+      label: Update Instruction
+      description: Describe exactly what changes you want to make to the prompt. Be specific.
+      placeholder: |
+        Example: Make the customer support prompt more empathetic. Add an explicit escalation
+        path to a human supervisor. Include an option to offer a callback.
+    validations:
+      required: true
+
+  - type: textarea
+    id: eval_config
+    attributes:
+      label: Evaluation Config (JSON)
+      description: |
+        Paste your evaluation configuration as JSON inside a code block.
+        If left empty, the default `evaluation/sample_eval.json` will be used.
+
+        The JSON should follow this schema:
+        ```json
+        {
+          "target_prompt": "<stem of the prompt file>",
+          "update_instruction": "<same as above or more detailed>",
+          "test_cases": [
+            {
+              "id": "test_something",
+              "description": "What this test checks",
+              "required_keywords": ["keyword1", "keyword2"],
+              "score_weight": 0.5
+            }
+          ],
+          "evaluation_criteria": {
+            "threshold": 0.70,
+            "max_prompt_length_words": 600
+          }
+        }
+        ```
+      placeholder: |
+        ```json
+        {
+          "target_prompt": "customer_support",
+          "update_instruction": "Add escalation handling and callback option",
+          "test_cases": [
+            {
+              "id": "test_escalation",
+              "description": "Prompt includes escalation path",
+              "required_keywords": ["escalat", "supervisor"],
+              "score_weight": 0.5
+            },
+            {
+              "id": "test_callback",
+              "description": "Prompt includes callback option",
+              "required_keywords": ["callback", "schedule"],
+              "score_weight": 0.5
+            }
+          ],
+          "evaluation_criteria": {
+            "threshold": 0.70
+          }
+        }
+        ```
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Pre-submission checklist
+      options:
+        - label: I have described the change clearly in the Update Instruction field
+          required: true
+        - label: I understand a pull request will be created automatically
+          required: true

@@ -1,0 +1,35 @@
+{
+  "target_prompt": "customer_support",
+  "update_instruction": "Make the prompt more empathetic. Add an explicit escalation path to a human supervisor after 3 failed resolution attempts. Include an option to offer a callback or schedule a follow-up call. Add guidance for handling upset or angry customers.",
+  "test_cases": [
+    {
+      "id": "test_empathy",
+      "description": "Prompt instructs empathetic, understanding responses",
+      "required_keywords": ["empatheti", "understand", "apolog", "acknowledge"],
+      "score_weight": 0.25
+    },
+    {
+      "id": "test_escalation",
+      "description": "Prompt includes an escalation path to a human agent or supervisor",
+      "required_keywords": ["escalat", "supervisor", "human agent", "transfer"],
+      "score_weight": 0.30
+    },
+    {
+      "id": "test_callback",
+      "description": "Prompt includes option to offer a callback or follow-up call",
+      "required_keywords": ["callback", "call back", "follow-up call", "schedule", "phone"],
+      "score_weight": 0.25
+    },
+    {
+      "id": "test_angry_customers",
+      "description": "Prompt provides guidance for handling upset or angry customers",
+      "required_keywords": ["upset", "angry", "frustrat", "calm", "de-escalat"],
+      "score_weight": 0.20
+    }
+  ],
+  "evaluation_criteria": {
+    "tone": "empathetic and professional",
+    "threshold": 0.70,
+    "max_prompt_length_words": 600
+  }
+}

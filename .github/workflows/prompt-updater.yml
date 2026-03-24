@@ -1,0 +1,190 @@
+name: Prompt Updater
+
+on:
+  issues:
+    types: [opened, labeled]
+
+# Only run when the 'prompt-update' label is present
+jobs:
+  update-prompt:
+    if: contains(github.event.issue.labels.*.name, 'prompt-update')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write        # push branch
+      pull-requests: write   # create PR
+      issues: write          # comment on issue
+
+    steps:
+      # -----------------------------------------------------------------------
+      # 1. Checkout repository
+      # -----------------------------------------------------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # -----------------------------------------------------------------------
+      # 2. Set up Python
+      # -----------------------------------------------------------------------
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # -----------------------------------------------------------------------
+      # 3. Parse the issue body
+      #    Expected issue body format (see ISSUE_TEMPLATE):
+      #
+      #    ### Update Instruction
+      #    <free text describing the update>
+      #
+      #    ### Evaluation Config (JSON)
+      #    ```json
+      #    { ... }
+      #    ```
+      # -----------------------------------------------------------------------
+      - name: Parse issue body
+        id: parse
+        env:
+          ISSUE_BODY: ${{ github.event.issue.body }}
+        run: |
+          python - <<'PYEOF'
+          import os, re, json, sys
+
+          body = os.environ["ISSUE_BODY"]
+
+          # --- Extract update instruction ---
+          instr_match = re.search(
+              r"###\s*Update Instruction\s*\n(.*?)(?=\n###|\Z)",
+              body, re.DOTALL | re.IGNORECASE
+          )
+          if not instr_match:
+              print("ERROR: Could not find '### Update Instruction' section in issue body.", file=sys.stderr)
+              sys.exit(1)
+          instruction = instr_match.group(1).strip()
+
+          # --- Extract JSON eval config ---
+          json_match = re.search(
+              r"###\s*Evaluation Config.*?\n```(?:json)?\s*\n(.*?)```",
+              body, re.DOTALL | re.IGNORECASE
+          )
+          eval_json_str = json_match.group(1).strip() if json_match else None
+
+          if eval_json_str:
+              try:
+                  json.loads(eval_json_str)   # validate
+              except json.JSONDecodeError as e:
+                  print(f"ERROR: Invalid JSON in Evaluation Config: {e}", file=sys.stderr)
+                  sys.exit(1)
+              with open("evaluation/issue_eval.json", "w") as f:
+                  f.write(eval_json_str)
+              eval_file = "evaluation/issue_eval.json"
+          else:
+              eval_file = "evaluation/sample_eval.json"
+
+          with open(os.environ["GITHUB_OUTPUT"], "a") as fh:
+              # Escape newlines for GitHub Actions output
+              safe_instruction = instruction.replace("\n", "%0A").replace("\r", "")
+              fh.write(f"instruction={safe_instruction}\n")
+              fh.write(f"eval_file={eval_file}\n")
+          PYEOF
+
+      # -----------------------------------------------------------------------
+      # 4. Run the prompt updater script
+      # -----------------------------------------------------------------------
+      - name: Update the prompt
+        id: update
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          UPDATED_FILE=$(python scripts/update_prompt.py \
+            --input-prompt "${{ steps.parse.outputs.instruction }}" \
+            --eval-file "${{ steps.parse.outputs.eval_file }}" \
+            --prompts-dir prompts/ | tail -1)
+          echo "updated_file=${UPDATED_FILE}" >> "$GITHUB_OUTPUT"
+          echo "Updated file: ${UPDATED_FILE}"
+
+      # -----------------------------------------------------------------------
+      # 5. Run evaluation
+      # -----------------------------------------------------------------------
+      - name: Run evaluation
+        id: eval
+        run: |
+          set +e
+          python evaluation/eval.py \
+            --prompt-file "${{ steps.update.outputs.updated_file }}" \
+            --eval-file "${{ steps.parse.outputs.eval_file }}" \
+            --output-json evaluation/last_eval_report.json
+          EVAL_EXIT=$?
+          echo "eval_exit=${EVAL_EXIT}" >> "$GITHUB_OUTPUT"
+
+          SCORE=$(python -c "import json; r=json.load(open('evaluation/last_eval_report.json')); print(f\"{r['score']:.2%}\")" 2>/dev/null || echo "N/A")
+          PASSED=$(python -c "import json; r=json.load(open('evaluation/last_eval_report.json')); print(r['passed'])" 2>/dev/null || echo "false")
+          echo "eval_score=${SCORE}" >> "$GITHUB_OUTPUT"
+          echo "eval_passed=${PASSED}" >> "$GITHUB_OUTPUT"
+
+      # -----------------------------------------------------------------------
+      # 6. Create a pull request
+      # -----------------------------------------------------------------------
+      - name: Create Pull Request
+        id: pr
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: |
+            feat(prompts): update prompt via issue #${{ github.event.issue.number }}
+
+            Triggered by: ${{ github.event.issue.html_url }}
+            Eval score: ${{ steps.eval.outputs.eval_score }}
+            Eval passed: ${{ steps.eval.outputs.eval_passed }}
+          branch: prompt-update/issue-${{ github.event.issue.number }}
+          delete-branch: true
+          title: "feat(prompts): ${{ github.event.issue.title }}"
+          body: |
+            ## Summary
+
+            This PR was automatically generated from issue #${{ github.event.issue.number }}.
+
+            **Update Instruction:**
+            > ${{ steps.parse.outputs.instruction }}
+
+            ## Evaluation Results
+
+            | Metric | Value |
+            |--------|-------|
+            | Score  | ${{ steps.eval.outputs.eval_score }} |
+            | Passed | ${{ steps.eval.outputs.eval_passed }} |
+
+            <details>
+            <summary>Full evaluation report</summary>
+
+            ```json
+            ${{ hashFiles('evaluation/last_eval_report.json') != '' && '(see evaluation/last_eval_report.json)' || 'Evaluation was skipped.' }}
+            ```
+
+            </details>
+
+            ---
+            *Closes #${{ github.event.issue.number }}*
+          labels: |
+            prompt-update
+            automated-pr
+
+      # -----------------------------------------------------------------------
+      # 7. Comment on the issue with results
+      # -----------------------------------------------------------------------
+      - name: Comment on issue
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          issue-number: ${{ github.event.issue.number }}
+          body: |
+            ## Prompt Updater Results
+
+            | Step | Status |
+            |------|--------|
+            | Prompt identified & updated | ✅ |
+            | Evaluation | ${{ steps.eval.outputs.eval_passed == 'True' && '✅ PASSED' || '⚠️ FAILED' }} (${{ steps.eval.outputs.eval_score }}) |
+            | Pull Request | ${{ steps.pr.outputs.pull-request-url != '' && format('✅ [{0}]({1})', steps.pr.outputs.pull-request-number, steps.pr.outputs.pull-request-url) || '❌ Not created' }} |
+
+            ${{ steps.eval.outputs.eval_passed != 'True' && '> ⚠️ **Note:** Evaluation did not meet the threshold. Please review the PR and consider further refinements before merging.' || '' }}
