@@ -1,28 +1,27 @@
 {
   "target_prompt": "code_review",
-  "update_instruction": "Remove the 'Feedback Format' section to make the prompt more concise",
+  "update_instruction": "Remove feedback format section",
   "test_cases": [
     {
-      "id": "test_no_feedback_format",
-      "description": "Verify 'Feedback Format' section was removed",
-      "required_keywords": ["Review Scope", "Behavior Guidelines", "Constraints"],
+      "id": "test_feedback_format",
+      "description": "Prompt must still contain a Feedback Format section",
+      "required_keywords": ["feedback format", "## feedback"],
       "score_weight": 0.40
     },
     {
-      "id": "test_core_sections_preserved",
-      "description": "Verify core sections (Role, Review Scope, Behavior Guidelines, Constraints) are still present",
-      "required_keywords": ["Role", "expert software engineer", "security", "constructive"],
-      "score_weight": 0.40
+      "id": "test_severity",
+      "description": "Prompt must still list severity levels",
+      "required_keywords": ["critical", "severity"],
+      "score_weight": 0.35
     },
     {
-      "id": "test_conciseness",
-      "description": "Verify the prompt is more concise",
-      "required_keywords": ["code quality", "maintainability", "improvement"],
-      "score_weight": 0.20
+      "id": "test_recommendation",
+      "description": "Prompt must still require recommendations with code examples",
+      "required_keywords": ["recommendation", "code example"],
+      "score_weight": 0.25
     }
   ],
   "evaluation_criteria": {
-    "threshold": 0.60,
-    "max_prompt_length_words": 700
+    "threshold": 1.0
   }
 }

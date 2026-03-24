@@ -3,55 +3,45 @@
   "eval_file": "/home/runner/work/mujtaba-copilot-agent-poc/mujtaba-copilot-agent-poc/evaluation/temp_eval.json",
   "target_prompt": "code_review",
   "score": 1.0,
-  "threshold": 0.6,
+  "threshold": 1.0,
   "passed": true,
   "test_results": [
     {
-      "id": "test_no_feedback_format",
-      "description": "Verify 'Feedback Format' section was removed",
+      "id": "test_feedback_format",
+      "description": "Prompt must still contain a Feedback Format section",
       "passed": true,
       "matched_keywords": [
-        "Review Scope",
-        "Behavior Guidelines",
-        "Constraints"
+        "feedback format",
+        "## feedback"
       ],
       "missing_keywords": [],
       "score_weight": 0.4,
       "contribution": 0.4
     },
     {
-      "id": "test_core_sections_preserved",
-      "description": "Verify core sections (Role, Review Scope, Behavior Guidelines, Constraints) are still present",
+      "id": "test_severity",
+      "description": "Prompt must still list severity levels",
       "passed": true,
       "matched_keywords": [
-        "Role",
-        "expert software engineer",
-        "security",
-        "constructive"
+        "critical",
+        "severity"
       ],
       "missing_keywords": [],
-      "score_weight": 0.4,
-      "contribution": 0.4
+      "score_weight": 0.35,
+      "contribution": 0.35
     },
     {
-      "id": "test_conciseness",
-      "description": "Verify the prompt is more concise",
+      "id": "test_recommendation",
+      "description": "Prompt must still require recommendations with code examples",
       "passed": true,
       "matched_keywords": [
-        "code quality",
-        "maintainability",
-        "improvement"
+        "recommendation",
+        "code example"
       ],
       "missing_keywords": [],
-      "score_weight": 0.2,
-      "contribution": 0.2
+      "score_weight": 0.25,
+      "contribution": 0.25
     }
   ],
-  "length_check": {
-    "id": "test_length",
-    "description": "Prompt length must not exceed 700 words",
-    "passed": true,
-    "word_count": 178,
-    "max_words": 700
-  }
+  "length_check": null
 }
