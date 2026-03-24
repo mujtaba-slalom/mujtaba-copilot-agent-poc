@@ -132,7 +132,37 @@ jobs:
           echo "Updated file: ${UPDATED_FILE}"
 
       # -----------------------------------------------------------------------
-      # 5. Run evaluation
+      # 5. Real-world data enrichment
+      #    Fetches public NLP samples from HuggingFace datasets server (no auth)
+      #    matching the prompt's domain. Runs a keyword-coverage + drift analysis
+      #    and injects a <!-- [REAL-WORLD VALIDATION] --> comment at the top of
+      #    the prompt file. The comment is visible in the PR diff.
+      #    This step is non-fatal: network errors are warned but do not fail the
+      #    pipeline.
+      # -----------------------------------------------------------------------
+      - name: Enrich prompt with real-world data validation
+        id: enrich
+        run: |
+          python3 scripts/enrich_prompt.py \
+            --prompt-file "${{ steps.update.outputs.updated_file }}" \
+            --samples 15
+
+          # Stage the enriched prompt so the comment lands in the PR commit
+          git add "${{ steps.update.outputs.updated_file }}" || true
+
+          # Extract and surface the coverage line for the job summary
+          COVERAGE=$(grep -oP "coverage\s+:\s+\K[^\n]+" \
+            "${{ steps.update.outputs.updated_file }}" || echo "n/a")
+          DRIFT=$(grep -oP "drift_score\s+:\s+\K[0-9.]+" \
+            "${{ steps.update.outputs.updated_file }}" || echo "n/a")
+          echo "coverage=${COVERAGE}" >> "$GITHUB_OUTPUT"
+          echo "drift=${DRIFT}"       >> "$GITHUB_OUTPUT"
+          echo "### Real-World Enrichment" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Coverage**: ${COVERAGE}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Drift score**: ${DRIFT}" >> "$GITHUB_STEP_SUMMARY"
+
+      # -----------------------------------------------------------------------
+      # 6. Run evaluation
       # -----------------------------------------------------------------------
       - name: Run evaluation
         id: eval
@@ -182,6 +212,17 @@ jobs:
             | Score  | ${{ steps.eval.outputs.eval_score }} |
             | Passed | ${{ steps.eval.outputs.eval_passed }} |
 
+            ## Real-World Data Validation
+
+            | Metric | Value |
+            |--------|-------|
+            | Coverage | ${{ steps.enrich.outputs.coverage }} |
+            | Drift score | ${{ steps.enrich.outputs.drift }} |
+
+            > Coverage = fraction of fetched public samples that share vocabulary
+            > with the prompt. Drift = how consistently the prompt vocabulary
+            > aligns across all samples (lower is better).
+
             <details>
             <summary>Full evaluation report</summary>
 
@@ -211,6 +252,7 @@ jobs:
             | Step | Status |
             |------|--------|
             | Prompt identified & updated | ✅ |
+            | Real-world enrichment | ✅ Coverage: ${{ steps.enrich.outputs.coverage }} · Drift: ${{ steps.enrich.outputs.drift }} |
             | Evaluation | ${{ steps.eval.outputs.eval_passed == 'True' && '✅ PASSED' || '⚠️ FAILED' }} (${{ steps.eval.outputs.eval_score }}) |
             | Pull Request | ${{ steps.pr.outputs.pull-request-url != '' && format('✅ [{0}]({1})', steps.pr.outputs.pull-request-number, steps.pr.outputs.pull-request-url) || '❌ Not created' }} |
 
