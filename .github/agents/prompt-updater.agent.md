@@ -75,8 +75,15 @@ python3 evaluation/eval.py \
   --output-json evaluation/last_eval_report.json
 ```
 
-- If the score **meets** the threshold → proceed to PR creation
-- If the score **fails** → review the failing test cases, make further edits to the prompt, and re-run eval once. If it still fails, proceed to PR with the warning noted.
+Read the exit code and `evaluation/last_eval_report.json` to determine the next action:
+
+| Score | Action |
+|-------|--------|
+| **100%** | Create the PR **immediately and automatically** — no confirmation needed |
+| **≥ threshold but < 100%** | Create the PR automatically — note the score in the PR description |
+| **< threshold (FAILED)** | **Stop.** Show the failing test cases. Ask the user: fix and retry, or skip PR? Do NOT create a PR until told to proceed |
+
+When eval fails, re-apply targeted fixes to the prompt to address the failing test cases, then re-run eval **once**. If it still fails after the retry, stop and report to the user — do not create a PR.
 
 ### Step 6 — Create a Pull Request
 
