@@ -205,3 +205,7 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Evaluation temporary files
+evaluation/temp_eval.json
+evaluation/last_eval_report.json
